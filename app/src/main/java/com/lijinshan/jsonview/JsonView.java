@@ -74,9 +74,9 @@ public class JsonView extends LinearLayout {
         createItemViewLeftQuotation(key, hierarchy, "[");
         for (int i = 0; i < value.length(); i++) {
             Object valueObject = value.opt(i);
-            handleValue(hierarchy, null, valueObject);
+            handleValue(hierarchy, null, valueObject, i < value.length() - 1);
         }
-        createItemViewRightQuotation(hierarchy, "]");
+        createItemViewRightQuotation(hierarchy, "]" + (hierarchy == 0 ? "" : ","));
     }
 
     private void createItemViewLeftQuotation(String key, int hierarchy, String quotation) {
@@ -100,12 +100,12 @@ public class JsonView extends LinearLayout {
         for (int i = 0; i < value.names().length(); i++) {
             String keyValue = value.names().optString(i);
             Object valueObject = value.opt(keyValue);
-            handleValue(hierarchy, keyValue, valueObject);
+            handleValue(hierarchy, keyValue, valueObject, i < value.names().length() - 1);
         }
-        createItemViewRightQuotation(hierarchy, "}");
+        createItemViewRightQuotation(hierarchy, "}" + (hierarchy == 0 ? "" : ","));
     }
 
-    private void handleValue(int hierarchyCopy, String keyValue, Object valueObject) {
+    private void handleValue(int hierarchyCopy, String keyValue, Object valueObject, boolean appendComma) {
         SpannableStringBuilder valueBuilder = new SpannableStringBuilder();
         JsonItemView itemViewChild = createItemView();
         if (valueObject instanceof Number) {
@@ -131,6 +131,9 @@ public class JsonView extends LinearLayout {
         } else { //JSONObject$1 内部类[null,etc]
             valueBuilder.append(valueObject.toString());
             valueBuilder.setSpan(new ForegroundColorSpan(NULL_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (appendComma) {
+            valueBuilder.append(",");
         }
         itemViewChild.showRight(valueBuilder);
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
