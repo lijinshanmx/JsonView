@@ -17,7 +17,8 @@ import org.json.JSONObject;
 import org.json.JSONTokener;
 
 /**
- * Created by lijinshan on 2018/3/31.
+ * @author lijinshan
+ * @date 2018/3/31
  */
 
 public class JsonView extends LinearLayout {
@@ -29,7 +30,6 @@ public class JsonView extends LinearLayout {
     public static int NULL_COLOR = 0xFFef5a34;
     public static int BOOLEAN_COLOR = 0xFFf78382;
 
-    //最顶层可能为Object 或者 Array 两种类型
     private JSONObject rootJSONObject;
     private JSONArray rootJSONArray;
 
@@ -82,7 +82,7 @@ public class JsonView extends LinearLayout {
     private void createItemViewLeftQuotation(String key, int hierarchy, String quotation) {
         JsonItemView itemViewLeftQuotation = createItemView();
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
-        keyBuilder.append(getHierarchyStr(hierarchy) + (TextUtils.isEmpty(key) ? "" : key + ":"));
+        keyBuilder.append(getHierarchyStr(hierarchy) + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"" + ":"));
         keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         itemViewLeftQuotation.hideLeft();
         itemViewLeftQuotation.showLeft(keyBuilder);
@@ -134,7 +134,7 @@ public class JsonView extends LinearLayout {
         }
         itemViewChild.showRight(valueBuilder);
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
-        keyBuilder.append(getHierarchyStr(++hierarchyCopy) + (TextUtils.isEmpty(keyValue) ? "" : keyValue + ":"));
+        keyBuilder.append(getHierarchyStr(++hierarchyCopy) + (TextUtils.isEmpty(keyValue) ? "" : "\"" + keyValue + "\"" + ":"));
         keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         itemViewChild.showLeft(keyBuilder);
     }
