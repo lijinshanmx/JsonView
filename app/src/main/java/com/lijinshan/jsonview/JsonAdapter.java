@@ -72,16 +72,15 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         JsonItemBean jsonItemBean = new JsonItemBean();
         jsonItemBeans.add(jsonItemBean);
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
-        keyBuilder.append(getHierarchyStr(hierarchy) + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"" + ":"));
-        keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        keyBuilder.append(getHierarchyStr(hierarchy) + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"" + ":") + quotation);
+        keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length() - 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         jsonItemBean.key = keyBuilder;
-        jsonItemBean.value = quotation;
     }
 
     private void createItemViewRightQuotation(int hierarchy, String quotation) {
         JsonItemBean jsonItemBean = new JsonItemBean();
         jsonItemBeans.add(jsonItemBean);
-        jsonItemBean.value = getHierarchyStr(hierarchy) + quotation;
+        jsonItemBean.key = getHierarchyStr(hierarchy) + quotation;
     }
 
     private void handleJsonArray(String key, JSONArray value, int hierarchy) {
@@ -180,14 +179,28 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
 
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
-        JsonItemBean jsonItemBean = jsonItemBeans.get(position);
+        final JsonItemBean jsonItemBean = jsonItemBeans.get(position);
         holder.tvLeft.setVisibility(TextUtils.isEmpty(jsonItemBean.key) ? View.GONE : View.VISIBLE);
         holder.tvRight.setVisibility(TextUtils.isEmpty(jsonItemBean.value) ? View.GONE : View.VISIBLE);
+        holder.tvLeft.setOnClickListener(null);
+        holder.tvRight.setOnClickListener(null);
         if (jsonItemBean.key != null) {
             holder.tvLeft.setText(jsonItemBean.key);
+            holder.tvLeft.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    System.out.println(jsonItemBean.key.toString().trim());
+                }
+            });
         }
         if (jsonItemBean.value != null) {
             holder.tvRight.setText(jsonItemBean.value);
+            holder.tvRight.setOnClickListener(new View.OnClickListener() {
+                @Override
+                public void onClick(View v) {
+                    System.out.println(jsonItemBean.value.toString().trim());
+                }
+            });
         }
     }
 
