@@ -2,17 +2,22 @@ package com.lijinshan.jsonview;
 
 import android.os.Bundle;
 import android.support.v7.app.AppCompatActivity;
+import android.support.v7.widget.LinearLayoutManager;
+import android.support.v7.widget.RecyclerView;
 
 public class MainActivity extends AppCompatActivity {
 
-    private JsonView jsonView;
+    private RecyclerView rvJson;
+    private JsonAdapter jsonAdapter;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
-        jsonView = findViewById(R.id.jsonView);
-        jsonView.setJsonData("{\n" +
+        rvJson = findViewById(R.id.rvJson);
+        rvJson.setLayoutManager(new LinearLayoutManager(this));
+        jsonAdapter = new JsonAdapter();
+        jsonAdapter.setJsonData("{\n" +
                 "\"code\": 100,\n" +
                 "\"msg\": \"首页获取成功\",\n" +
                 "\"data\": {\n" +
@@ -721,5 +726,6 @@ public class MainActivity extends AppCompatActivity {
                 "}\n" +
                 "}\n" +
                 "}");
+        rvJson.setAdapter(jsonAdapter);
     }
 }

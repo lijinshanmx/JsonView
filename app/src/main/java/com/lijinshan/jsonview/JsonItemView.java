@@ -51,7 +51,6 @@ public class JsonItemView extends LinearLayout {
 
         mTvLeft.setTextSize(TEXT_SIZE_DP);
         mTvRight.setTextSize(TEXT_SIZE_DP);
-        mTvRight.setTextColor(JsonAdapter.BRACES_COLOR);
     }
 
     public void hideLeft() {
