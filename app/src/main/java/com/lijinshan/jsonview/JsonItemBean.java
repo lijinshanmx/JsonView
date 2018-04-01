@@ -13,6 +13,20 @@ public class JsonItemBean {
     public boolean collapse;
     public boolean isFolded;
 
+    public JsonItemBean() {
+    }
+
+    public JsonItemBean(JsonItemBean parent, int hierarchy) {
+        this.parent = parent;
+        this.hierarchy = hierarchy;
+    }
+
+    public JsonItemBean(boolean isNode, JsonItemBean parent, int hierarchy) {
+        this.isNode = isNode;
+        this.parent = parent;
+        this.hierarchy = hierarchy;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o) return true;

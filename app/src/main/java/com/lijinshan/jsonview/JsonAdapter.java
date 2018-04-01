@@ -81,11 +81,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     }
 
     private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, String key, int hierarchy, String quotation) {
-        JsonItemBean jsonItemBean = new JsonItemBean();
-        jsonItemBean.hierarchy = hierarchy;
-        jsonItemBean.isNode = true;
-        jsonItemBean.parent = parent;
-        jsonItemBeans.add(jsonItemBean);
+        JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy, true);
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
         keyBuilder.append(getHierarchyStr(hierarchy) + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"" + ":") + quotation);
         keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length() - 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -95,10 +91,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     }
 
     private void createItemViewRightQuotation(JsonItemBean parent, int hierarchy, String quotation) {
-        JsonItemBean jsonItemBean = new JsonItemBean();
-        jsonItemBean.hierarchy = hierarchy;
-        jsonItemBean.parent = parent;
-        jsonItemBeans.add(jsonItemBean);
+        JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy);
         jsonItemBean.key = getHierarchyStr(hierarchy) + quotation;
     }
 
@@ -121,11 +114,9 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         createItemViewRightQuotation(parent, hierarchy, "}" + (hierarchy == 0 ? "" : ","));
     }
 
-    private void handleValue(JsonItemBean parent, int hierarchyCopy, String keyValue, Object valueObject, boolean appendComma) {
+    private void handleValue(JsonItemBean parent, int hierarchy, String keyValue, Object valueObject, boolean appendComma) {
         SpannableStringBuilder valueBuilder = new SpannableStringBuilder();
-        JsonItemBean jsonItemBean = createItemView();
-        jsonItemBean.parent = parent;
-        jsonItemBean.hierarchy = hierarchyCopy;
+        JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy);
         if (valueObject instanceof Number) {
             valueBuilder.append(valueObject.toString());
             valueBuilder.setSpan(new ForegroundColorSpan(NUMBER_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -135,11 +126,11 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         } else if (valueObject instanceof JSONObject) {
             jsonItemBeans.remove(jsonItemBean);
             JSONObject jsonObject = (JSONObject) valueObject;
-            handleJsonObject(parent, keyValue, jsonObject, ++hierarchyCopy);
+            handleJsonObject(parent, keyValue, jsonObject, ++hierarchy);
         } else if (valueObject instanceof JSONArray) {
             jsonItemBeans.remove(jsonItemBean);
             JSONArray jsonArray = (JSONArray) valueObject;
-            handleJsonArray(parent, keyValue, jsonArray, ++hierarchyCopy);
+            handleJsonArray(parent, keyValue, jsonArray, ++hierarchy);
         } else if (valueObject instanceof String) {
             valueBuilder.append("\"").append(valueObject.toString()).append("\"");
             valueBuilder.setSpan(new ForegroundColorSpan(TEXT_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -155,15 +146,19 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         }
         jsonItemBean.value = valueBuilder;
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
-        keyBuilder.append(getHierarchyStr(++hierarchyCopy) + (TextUtils.isEmpty(keyValue) ? "" : "\"" + keyValue + "\"" + ":"));
+        keyBuilder.append(getHierarchyStr(++hierarchy) + (TextUtils.isEmpty(keyValue) ? "" : "\"" + keyValue + "\"" + ":"));
         keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         jsonItemBean.key = keyBuilder;
     }
 
-    private JsonItemBean createItemView() {
-        JsonItemBean jsonItemBean = new JsonItemBean();
+    private JsonItemBean createJsonItemBean(JsonItemBean parent, int hierarchy, boolean isNode) {
+        JsonItemBean jsonItemBean = new JsonItemBean(isNode, parent, hierarchy);
         jsonItemBeans.add(jsonItemBean);
         return jsonItemBean;
+    }
+
+    private JsonItemBean createJsonItemBean(JsonItemBean parent, int hierarchy) {
+        return createJsonItemBean(parent, hierarchy, false);
     }
 
     private void checkJsonIsIllegal(String json) {
@@ -210,7 +205,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
                     if (jsonItemBean.isNode) {
                         jsonItemBean.isFolded = !jsonItemBean.isFolded;
                         System.out.println(jsonItemBean.key.toString().trim());
-                        findParent(jsonItemBean.isFolded, jsonItemBean);
+                        expandOrCollapseJsonItem(jsonItemBean.isFolded, jsonItemBean);
                     }
                 }
             });
@@ -226,12 +221,12 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         }
     }
 
-    private void findParent(boolean collapse, JsonItemBean jsonItemBean) {
+    private void expandOrCollapseJsonItem(boolean collapse, JsonItemBean jsonItemBean) {
         for (JsonItemBean itemBean : jsonItemBeans) {
             if (itemBean.parent == jsonItemBean) {
                 itemBean.collapse = collapse;
                 if (itemBean.isNode) {
-                    findParent(collapse, itemBean);
+                    expandOrCollapseJsonItem(collapse, itemBean);
                 }
             }
         }
