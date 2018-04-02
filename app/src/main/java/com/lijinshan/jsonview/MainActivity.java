@@ -742,7 +742,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnGenerateJson.setOnClickListener(this);
         btnShowDialog.setOnClickListener(this);
         bottomSheetDialog = new BottomSheetDialog(this);
-        bottomSheetDialog.setContentView(R.layout.bottom_layout);
+        bottomSheetDialog.setContentView(R.layout.bottom_modify_layout);
         jsonAdapter.setJsonModifyCallback(new JsonAdapter.JsonModifyCallback() {
             @Override
             public void modify(JsonItemBean jsonItemBean) {
