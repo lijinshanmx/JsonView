@@ -243,11 +243,15 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
             if (!collapse) {
                 if (itemBean.parent == jsonItemBean) {
                     itemBean.collapse = false;
+                    if (itemBean.isNode) {
+                        itemBean.isFolded = true;
+                    }
                 }
             } else if (!itemBean.collapse) {
                 if (itemBean.parent == jsonItemBean) {
                     itemBean.collapse = true;
                     if (itemBean.isNode) {
+                        itemBean.isFolded = false;
                         expandOrCollapseJsonItem(true, itemBean);
                     }
                 }
