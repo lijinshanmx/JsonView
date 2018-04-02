@@ -15,6 +15,7 @@ public class JsonItemBean {
     public boolean collapse = true;
     public boolean isFolded = true;
     public boolean isObjectOrArray;
+    public SpannableStringBuilder collapseText;
 
     public JsonItemBean() {
     }

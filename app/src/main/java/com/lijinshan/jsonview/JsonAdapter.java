@@ -78,16 +78,24 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         handleJsonArray(null, null, jsonArray, 0, false);
     }
 
-    private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, String key, int hierarchy, boolean isJsonObject) {
+    private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, String key, int hierarchy, boolean isJsonObject, int arraySize) {
         String quotation = isJsonObject ? "{" : "[";
+        String itemKeyLeftSpace = getHierarchyStr(hierarchy);
+        String itemKeyLeft = itemKeyLeftSpace + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"" + ":");
+        String itemKey = itemKeyLeft + quotation;
         JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy, true);
         jsonItemBean.isObjectOrArray = isJsonObject;
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
-        keyBuilder.append(getHierarchyStr(hierarchy) + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"" + ":") + quotation);
+        keyBuilder.append(itemKey);
         if (keyBuilder.length() > 0) {
             keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length() - 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         jsonItemBean.key = keyBuilder;
+        if (hierarchy == 0) {
+            jsonItemBean.collapseText = keyBuilder;
+        } else {
+            jsonItemBean.collapseText = new SpannableStringBuilder(itemKeyLeft + (isJsonObject ? "Object{...}" : "Array[" + arraySize + "]"));
+        }
         return jsonItemBean;
 
     }
@@ -101,7 +109,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
 
     private void handleJsonArray(JsonItemBean parentItem, String key, JSONArray value, int hierarchy, boolean appendComma) {
         if (value == null) return;
-        JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, false);
+        JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, false, value.length());
         for (int i = 0; i < value.length(); i++) {
             Object valueObject = value.opt(i);
             handleValue(parent, hierarchy, null, valueObject, i < value.length() - 1);
@@ -111,7 +119,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
 
     private void handleJsonObject(JsonItemBean parentItem, String key, JSONObject value, int hierarchy, boolean appendComma) {
         if (value == null) return;
-        JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, true);
+        JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, true, 0);
         if (value.names() != null) {
             for (int i = 0; i < value.names().length(); i++) {
                 String keyValue = value.names().optString(i);
@@ -201,33 +209,34 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         final JsonItemBean jsonItemBean = viewJsonItemBeans.get(position);
-        holder.tvLeft.setVisibility(TextUtils.isEmpty(jsonItemBean.key) ? View.GONE : View.VISIBLE);
-        holder.tvRight.setVisibility(TextUtils.isEmpty(jsonItemBean.value) ? View.GONE : View.VISIBLE);
+        holder.tvLeft.setVisibility(TextUtils.isEmpty(jsonItemBean.key) ? View.INVISIBLE : View.VISIBLE);
+        holder.tvRight.setVisibility(TextUtils.isEmpty(jsonItemBean.value) ? View.INVISIBLE : View.VISIBLE);
         holder.tvLeft.setOnClickListener(null);
         holder.tvRight.setOnClickListener(null);
         if (jsonItemBean.key != null) {
-//            holder.tvLeft.setText(jsonItemBean.key + "[" + jsonItemBean.hierarchy + "]");
-            holder.tvLeft.setText(jsonItemBean.key);
-            holder.tvLeft.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    if (jsonItemBean.isNode) {
-                        jsonItemBean.isFolded = !jsonItemBean.isFolded;
-                        expandOrCollapseJsonItem(jsonItemBean.isFolded, jsonItemBean);
-                    }
-                }
-            });
+            if (jsonItemBean.isNode && jsonItemBean.isFolded) {
+                holder.tvLeft.setText(jsonItemBean.collapseText);
+            } else {
+                holder.tvLeft.setText(jsonItemBean.key);
+            }
         }
         if (jsonItemBean.value != null) {
             holder.tvRight.setText(jsonItemBean.value);
-            holder.tvRight.setOnClickListener(new View.OnClickListener() {
-                @Override
-                public void onClick(View v) {
-                    System.out.println(jsonItemBean.value.toString().trim());
-                }
-            });
         }
+        View.OnClickListener onClickListener = new View.OnClickListener() {
+            @Override
+            public void onClick(View v) {
+                if (jsonItemBean.isNode) {
+                    jsonItemBean.isFolded = !jsonItemBean.isFolded;
+                    expandOrCollapseJsonItem(jsonItemBean.isFolded, jsonItemBean);
+                }
+            }
+        };
+        holder.tvLeft.setOnClickListener(onClickListener);
+        holder.tvRight.setOnClickListener(onClickListener);
+        holder.itemView.setOnClickListener(onClickListener);
     }
+
 
     private void expandOrCollapseJsonItem(boolean collapse, JsonItemBean jsonItemBean) {
         for (JsonItemBean itemBean : jsonItemBeans) {
@@ -254,11 +263,15 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     public void collapseAllJsonItems() {
         for (JsonItemBean jsonItemBean : jsonItemBeans) {
             if (jsonItemBean.hierarchy == 0 || (jsonItemBean.hierarchy == 1 && jsonItemBean.isNode)) {
+                //保持第一层和第二层的Node的显示
                 jsonItemBean.collapse = false;
                 viewJsonItemBeans.add(jsonItemBean);
             } else {
                 //reset state.
                 jsonItemBean.collapse = true;
+            }
+            if (jsonItemBean.isNode) {
+                jsonItemBean.isFolded = true;
             }
         }
         notifyDataSetChanged();
@@ -269,6 +282,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
             if (itemBean.parent == jsonItemBean) {
                 itemBean.collapse = collapse;
                 if (itemBean.isNode) {
+                    itemBean.isFolded = false;
                     expandOrCollapseJsonItems(collapse, itemBean);
                 }
             }
