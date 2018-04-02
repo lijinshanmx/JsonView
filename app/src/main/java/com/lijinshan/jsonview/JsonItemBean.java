@@ -9,6 +9,8 @@ import android.text.SpannableStringBuilder;
 public class JsonItemBean {
     public SpannableStringBuilder key;
     public SpannableStringBuilder value;
+    public Object jsonValue;
+    public Object jsonIndex;
     public boolean isNode;
     public JsonItemBean parent;
     public int hierarchy;
@@ -16,6 +18,7 @@ public class JsonItemBean {
     public boolean isFolded = true;
     public boolean isObjectOrArray;
     public SpannableStringBuilder collapseText;
+    public boolean hasComma;
 
     public JsonItemBean() {
     }

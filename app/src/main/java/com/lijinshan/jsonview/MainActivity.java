@@ -1,6 +1,7 @@
 package com.lijinshan.jsonview;
 
 import android.os.Bundle;
+import android.support.design.widget.BottomSheetDialog;
 import android.support.v7.app.AppCompatActivity;
 import android.support.v7.widget.LinearLayoutManager;
 import android.support.v7.widget.RecyclerView;
@@ -11,7 +12,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 
     private RecyclerView rvJson;
     private JsonAdapter jsonAdapter;
-    private Button btnExpand, btnCollapse;
+    private Button btnExpand, btnCollapse, btnGenerateJson, btnShowDialog;
+    private BottomSheetDialog bottomSheetDialog;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -20,6 +22,8 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         rvJson = findViewById(R.id.rvJson);
         btnExpand = findViewById(R.id.btnExpand);
         btnCollapse = findViewById(R.id.btnCollapse);
+        btnGenerateJson = findViewById(R.id.btnGenerateJson);
+        btnShowDialog = findViewById(R.id.btnShowDialog);
         rvJson.setLayoutManager(new LinearLayoutManager(this));
         jsonAdapter = new JsonAdapter();
         jsonAdapter.setJsonData("{\n" +
@@ -735,6 +739,17 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         rvJson.setAdapter(jsonAdapter);
         btnCollapse.setOnClickListener(this);
         btnExpand.setOnClickListener(this);
+        btnGenerateJson.setOnClickListener(this);
+        btnShowDialog.setOnClickListener(this);
+        bottomSheetDialog = new BottomSheetDialog(this);
+        bottomSheetDialog.setContentView(R.layout.bottom_layout);
+        jsonAdapter.setJsonModifyCallback(new JsonAdapter.JsonModifyCallback() {
+            @Override
+            public void modify(JsonItemBean jsonItemBean) {
+                jsonAdapter.setJsonItemViewValue(jsonItemBean, "iam modified");
+            }
+        });
+
     }
 
     @Override
@@ -743,6 +758,10 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             jsonAdapter.collapseAllJsonItems();
         } else if (v.getId() == R.id.btnExpand) {
             jsonAdapter.expandAllJsonItems();
+        } else if (v.getId() == R.id.btnGenerateJson) {
+            System.out.println(jsonAdapter.generateJson());
+        } else if (v.getId() == R.id.btnShowDialog) {
+            bottomSheetDialog.show();
         }
     }
 }

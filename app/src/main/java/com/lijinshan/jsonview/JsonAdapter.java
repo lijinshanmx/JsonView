@@ -131,7 +131,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, false, value.length(), appendComma);
         for (int i = 0; i < value.length(); i++) {
             Object valueObject = value.opt(i);
-            handleValue(parent, hierarchy, null, valueObject, i < value.length() - 1);
+            handleValue(parent, value, i, hierarchy, null, valueObject, i < value.length() - 1);
         }
         createItemViewRightQuotation(parent, hierarchy, false, appendComma);
     }
@@ -143,15 +143,15 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
             for (int i = 0; i < value.names().length(); i++) {
                 String keyValue = value.names().optString(i);
                 Object valueObject = value.opt(keyValue);
-                handleValue(parent, hierarchy, keyValue, valueObject, i < value.names().length() - 1);
+                handleValue(parent, value, keyValue, hierarchy, keyValue, valueObject, i < value.names().length() - 1);
             }
         }
         createItemViewRightQuotation(parent, hierarchy, true, appendComma);
     }
 
-    private void handleValue(JsonItemBean parent, int hierarchy, String keyValue, Object valueObject, boolean appendComma) {
-        SpannableStringBuilder valueBuilder = new SpannableStringBuilder();
+    private void handleValue(JsonItemBean parent, Object jsonValue, Object jsonIndex, int hierarchy, String keyValue, Object valueObject, boolean appendComma) {
         JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy);
+        SpannableStringBuilder valueBuilder = new SpannableStringBuilder();
         if (valueObject instanceof Number) {
             valueBuilder.append(valueObject.toString());
             valueBuilder.setSpan(new ForegroundColorSpan(NUMBER_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -179,7 +179,10 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         if (appendComma) {
             valueBuilder.append(",");
         }
+        jsonItemBean.hasComma = appendComma;
         jsonItemBean.value = valueBuilder;
+        jsonItemBean.jsonValue = jsonValue;
+        jsonItemBean.jsonIndex = jsonIndex;
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
         keyBuilder.append(getHierarchyStr(++hierarchy) + (TextUtils.isEmpty(keyValue) ? "" : "\"" + keyValue + "\"" + ":"));
         keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -251,9 +254,80 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
                 }
             }
         };
+        View.OnLongClickListener onLongClickListener = new View.OnLongClickListener() {
+            @Override
+            public boolean onLongClick(View v) {
+                if (!jsonItemBean.isNode) {
+                    if (jsonItemBean.jsonValue instanceof JSONObject) {
+                        System.out.println(((JSONObject) jsonItemBean.jsonValue).opt((String) jsonItemBean.jsonIndex));
+                    } else if (jsonItemBean.jsonValue instanceof JSONArray) {
+                        System.out.println(((JSONArray) jsonItemBean.jsonValue).opt((int) jsonItemBean.jsonIndex));
+                    }
+                    if (jsonModifyCallback != null) {
+                        jsonModifyCallback.modify(jsonItemBean);
+                    }
+                }
+
+                return true;
+            }
+        };
         holder.tvLeft.setOnClickListener(onClickListener);
         holder.tvRight.setOnClickListener(onClickListener);
         holder.itemView.setOnClickListener(onClickListener);
+        if (!jsonItemBean.isNode) {
+            holder.tvLeft.setOnLongClickListener(onLongClickListener);
+            holder.tvRight.setOnLongClickListener(onLongClickListener);
+            holder.itemView.setOnLongClickListener(onLongClickListener);
+        }
+    }
+
+    public void setJsonItemViewValue(JsonItemBean jsonItemBean, Object valueObject) {
+        if (jsonItemBean.jsonValue instanceof JSONObject) {
+            try {
+                ((JSONObject) jsonItemBean.jsonValue).put((String) jsonItemBean.jsonIndex, valueObject);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+            System.out.println(((JSONObject) jsonItemBean.jsonValue).opt((String) jsonItemBean.jsonIndex));
+        } else if (jsonItemBean.jsonValue instanceof JSONArray) {
+            try {
+                ((JSONArray) jsonItemBean.jsonValue).put((int) jsonItemBean.jsonIndex, valueObject);
+            } catch (JSONException e) {
+                e.printStackTrace();
+            }
+        }
+        SpannableStringBuilder valueBuilder = new SpannableStringBuilder();
+        if (valueObject instanceof Number) {
+            valueBuilder.append(valueObject.toString());
+            valueBuilder.setSpan(new ForegroundColorSpan(NUMBER_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        } else if (valueObject instanceof Boolean) {
+            valueBuilder.append(valueObject.toString());
+            valueBuilder.setSpan(new ForegroundColorSpan(BOOLEAN_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        } else if (valueObject instanceof String) {
+            valueBuilder.append("\"").append(valueObject.toString()).append("\"");
+            valueBuilder.setSpan(new ForegroundColorSpan(TEXT_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        } else if (valueObject == null) {
+            valueBuilder.append("null");
+            valueBuilder.setSpan(new ForegroundColorSpan(NULL_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        } else { //JSONObject$1 内部类[null,etc]
+            valueBuilder.append(valueObject.toString());
+            valueBuilder.setSpan(new ForegroundColorSpan(NULL_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        if (jsonItemBean.hasComma) {
+            valueBuilder.append(",");
+        }
+        jsonItemBean.value = valueBuilder;
+        notifyDataSetChanged();
+    }
+
+    private JsonModifyCallback jsonModifyCallback = null;
+
+    public void setJsonModifyCallback(JsonModifyCallback jsonModifyCallback) {
+        this.jsonModifyCallback = jsonModifyCallback;
+    }
+
+    public interface JsonModifyCallback {
+        void modify(JsonItemBean jsonItemBean);
     }
 
 
@@ -312,6 +386,16 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         }
         notifyDataSetChanged();
     }
+
+    public String generateJson() {
+        if (rootJSONArray != null) {
+            return rootJSONArray.toString();
+        } else if (rootJSONObject != null) {
+            return rootJSONObject.toString();
+        }
+        return "";
+    }
+
 
     @Override
     public int getItemCount() {
