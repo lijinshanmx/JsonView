@@ -247,6 +247,35 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         notifyDataSetChanged();
     }
 
+    public void expandAllJsonItems() {
+        expandOrCollapseJsonItems(false, jsonItemBeans.get(0));
+    }
+
+    public void collapseAllJsonItems() {
+        for (JsonItemBean jsonItemBean : jsonItemBeans) {
+            if (jsonItemBean.hierarchy == 0 || (jsonItemBean.hierarchy == 1 && jsonItemBean.isNode)) {
+                jsonItemBean.collapse = false;
+                viewJsonItemBeans.add(jsonItemBean);
+            } else {
+                //reset state.
+                jsonItemBean.collapse = true;
+            }
+        }
+        notifyDataSetChanged();
+    }
+
+    private void expandOrCollapseJsonItems(boolean collapse, JsonItemBean jsonItemBean) {
+        for (JsonItemBean itemBean : jsonItemBeans) {
+            if (itemBean.parent == jsonItemBean) {
+                itemBean.collapse = collapse;
+                if (itemBean.isNode) {
+                    expandOrCollapseJsonItems(collapse, itemBean);
+                }
+            }
+        }
+        notifyDataSetChanged();
+    }
+
     @Override
     public int getItemCount() {
         return calcViewJsonItemBeanSize();
