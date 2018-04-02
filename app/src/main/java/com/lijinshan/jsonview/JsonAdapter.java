@@ -209,8 +209,8 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         final JsonItemBean jsonItemBean = viewJsonItemBeans.get(position);
-        holder.tvLeft.setVisibility(TextUtils.isEmpty(jsonItemBean.key) ? View.INVISIBLE : View.VISIBLE);
-        holder.tvRight.setVisibility(TextUtils.isEmpty(jsonItemBean.value) ? View.INVISIBLE : View.VISIBLE);
+        holder.tvLeft.setVisibility(TextUtils.isEmpty(jsonItemBean.key) ? View.GONE : View.VISIBLE);
+        holder.tvRight.setVisibility(TextUtils.isEmpty(jsonItemBean.value) ? View.GONE : View.VISIBLE);
         holder.tvLeft.setOnClickListener(null);
         holder.tvRight.setOnClickListener(null);
         if (jsonItemBean.key != null) {
