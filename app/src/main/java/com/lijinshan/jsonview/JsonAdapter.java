@@ -71,15 +71,11 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     }
 
     private void handleRootJsonObject(JSONObject jsonObject) {
-        if (jsonObject != null && jsonObject.names() != null) {
-            handleJsonObject(null, null, jsonObject, 0, false);
-        }
+        handleJsonObject(null, null, jsonObject, 0, false);
     }
 
     private void handleRootJsonArray(JSONArray jsonArray) {
-        if (jsonArray != null && jsonArray.length() > 0) {
-            handleJsonArray(null, null, jsonArray, 0, false);
-        }
+        handleJsonArray(null, null, jsonArray, 0, false);
     }
 
     private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, String key, int hierarchy, boolean isJsonObject) {
@@ -104,6 +100,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     }
 
     private void handleJsonArray(JsonItemBean parentItem, String key, JSONArray value, int hierarchy, boolean appendComma) {
+        if (value == null) return;
         JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, false);
         for (int i = 0; i < value.length(); i++) {
             Object valueObject = value.opt(i);
@@ -113,11 +110,14 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     }
 
     private void handleJsonObject(JsonItemBean parentItem, String key, JSONObject value, int hierarchy, boolean appendComma) {
+        if (value == null) return;
         JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, true);
-        for (int i = 0; i < value.names().length(); i++) {
-            String keyValue = value.names().optString(i);
-            Object valueObject = value.opt(keyValue);
-            handleValue(parent, hierarchy, keyValue, valueObject, i < value.names().length() - 1);
+        if (value.names() != null) {
+            for (int i = 0; i < value.names().length(); i++) {
+                String keyValue = value.names().optString(i);
+                Object valueObject = value.opt(keyValue);
+                handleValue(parent, hierarchy, keyValue, valueObject, i < value.names().length() - 1);
+            }
         }
         createItemViewRightQuotation(parent, hierarchy, true, appendComma);
     }
