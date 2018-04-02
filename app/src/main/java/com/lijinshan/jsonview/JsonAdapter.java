@@ -70,13 +70,13 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
 
     private void handleRootJsonObject(JSONObject jsonObject) {
         if (jsonObject != null && jsonObject.names() != null) {
-            handleJsonObject(null, null, jsonObject, 0);
+            handleJsonObject(null, null, jsonObject, 0, false);
         }
     }
 
     private void handleRootJsonArray(JSONArray jsonArray) {
         if (jsonArray != null && jsonArray.length() > 0) {
-            handleJsonArray(null, null, jsonArray, 0);
+            handleJsonArray(null, null, jsonArray, 0, false);
         }
     }
 
@@ -85,40 +85,39 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy, true);
         jsonItemBean.isObjectOrArray = isJsonObject;
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
-        keyBuilder.append(getHierarchyStr(hierarchy) + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"" + ":"));
+        keyBuilder.append(getHierarchyStr(hierarchy) + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"" + ":") + quotation);
         if (keyBuilder.length() > 0) {
             keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length() - 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         jsonItemBean.key = keyBuilder;
-        jsonItemBean.value = new SpannableStringBuilder(quotation);
         return jsonItemBean;
 
     }
 
-    private void createItemViewRightQuotation(JsonItemBean parent, int hierarchy, boolean isJsonObject) {
-        String quotation = (isJsonObject ? "}" : "]") + (hierarchy == 0 ? "" : ",");
+    private void createItemViewRightQuotation(JsonItemBean parent, int hierarchy, boolean isJsonObject, boolean appendComma) {
+        String quotation = (isJsonObject ? "}" : "]") + (appendComma ? "," : "");
         JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy);
         jsonItemBean.isObjectOrArray = isJsonObject;
         jsonItemBean.key = new SpannableStringBuilder(getHierarchyStr(hierarchy) + quotation);
     }
 
-    private void handleJsonArray(JsonItemBean parentItem, String key, JSONArray value, int hierarchy) {
+    private void handleJsonArray(JsonItemBean parentItem, String key, JSONArray value, int hierarchy, boolean appendComma) {
         JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, false);
         for (int i = 0; i < value.length(); i++) {
             Object valueObject = value.opt(i);
             handleValue(parent, hierarchy, null, valueObject, i < value.length() - 1);
         }
-        createItemViewRightQuotation(parent, hierarchy, false);
+        createItemViewRightQuotation(parent, hierarchy, false, appendComma);
     }
 
-    private void handleJsonObject(JsonItemBean parentItem, String key, JSONObject value, int hierarchy) {
+    private void handleJsonObject(JsonItemBean parentItem, String key, JSONObject value, int hierarchy, boolean appendComma) {
         JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, true);
         for (int i = 0; i < value.names().length(); i++) {
             String keyValue = value.names().optString(i);
             Object valueObject = value.opt(keyValue);
             handleValue(parent, hierarchy, keyValue, valueObject, i < value.names().length() - 1);
         }
-        createItemViewRightQuotation(parent, hierarchy, true);
+        createItemViewRightQuotation(parent, hierarchy, true, appendComma);
     }
 
     private void handleValue(JsonItemBean parent, int hierarchy, String keyValue, Object valueObject, boolean appendComma) {
@@ -133,11 +132,11 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         } else if (valueObject instanceof JSONObject) {
             jsonItemBeans.remove(jsonItemBean);
             JSONObject jsonObject = (JSONObject) valueObject;
-            handleJsonObject(parent, keyValue, jsonObject, ++hierarchy);
+            handleJsonObject(parent, keyValue, jsonObject, ++hierarchy, appendComma);
         } else if (valueObject instanceof JSONArray) {
             jsonItemBeans.remove(jsonItemBean);
             JSONArray jsonArray = (JSONArray) valueObject;
-            handleJsonArray(parent, keyValue, jsonArray, ++hierarchy);
+            handleJsonArray(parent, keyValue, jsonArray, ++hierarchy, appendComma);
         } else if (valueObject instanceof String) {
             valueBuilder.append("\"").append(valueObject.toString()).append("\"");
             valueBuilder.setSpan(new ForegroundColorSpan(TEXT_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
