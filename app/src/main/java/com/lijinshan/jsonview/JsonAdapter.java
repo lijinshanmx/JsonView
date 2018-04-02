@@ -39,6 +39,8 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     private List<JsonItemBean> jsonItemBeans;
     private List<JsonItemBean> viewJsonItemBeans;
 
+    private boolean allowAllCollapse = false;
+
 
     public JsonAdapter() {
         registerAdapterDataObserver(new RecyclerView.AdapterDataObserver() {
@@ -210,9 +212,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
                 public void onClick(View v) {
                     if (jsonItemBean.isNode) {
                         jsonItemBean.isFolded = !jsonItemBean.isFolded;
-                        long startTime = System.currentTimeMillis();
                         expandOrCollapseJsonItem(jsonItemBean.isFolded, jsonItemBean);
-                        System.out.println("time:" + (System.currentTimeMillis() - startTime));
                     }
                 }
             });
@@ -251,7 +251,19 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     private int calcViewJsonItemBeanSize() {
         if (viewJsonItemBeans == null) {
             viewJsonItemBeans = new ArrayList<>();
-            viewJsonItemBeans.addAll(jsonItemBeans);
+            //First show 显示第一层和第二层的Node、
+            //for example:
+            //{                         ==> hierarchy = 0
+            //  "code":200              ==> hierarchy = 0
+            //  "msg":"获取数据成功"      ==> hierarchy = 0
+            //  "data":Object{...}      ==> hierarchy = 1 && isNode节点
+            //}                         ==> hierarchy = 0
+            //
+            for (JsonItemBean jsonItemBean : jsonItemBeans) {
+                if (jsonItemBean.hierarchy == 0 || (jsonItemBean.hierarchy == 1 && jsonItemBean.isNode)) {
+                    viewJsonItemBeans.add(jsonItemBean);
+                }
+            }
         }
         if (hasJsonItemsChanged) {
             hasJsonItemsChanged = false;

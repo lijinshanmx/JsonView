@@ -13,7 +13,7 @@ public class JsonItemBean {
     public JsonItemBean parent;
     public int hierarchy;
     public boolean collapse;
-    public boolean isFolded;
+    public boolean isFolded = true;
     public boolean isObjectOrArray;
 
     public JsonItemBean() {
