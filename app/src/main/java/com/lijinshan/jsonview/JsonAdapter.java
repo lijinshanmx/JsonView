@@ -25,12 +25,13 @@ import java.util.List;
 
 public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
 
-    public static int KEY_COLOR = 0xFF912d8d;
-    public static int TEXT_COLOR = 0xFF40b34f;
+    public static int KEY_COLOR = 0xFF922799;
+    public static int TEXT_COLOR = 0xFF3AB54A;
     public static int NUMBER_COLOR = 0xFF25AAE2;
     public static int URL_COLOR = 0xFF66D2D5;
-    public static int NULL_COLOR = 0xFFef5a34;
+    public static int NULL_COLOR = 0xFFEF5935;
     public static int BOOLEAN_COLOR = 0xFFf78382;
+    public static int BRACES_COLOR = 0xFF4A555F;//"{"，"}","[","]",":" Color
 
     private JSONObject rootJSONObject;
     private JSONArray rootJSONArray;
@@ -81,20 +82,34 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, String key, int hierarchy, boolean isJsonObject, int arraySize) {
         String quotation = isJsonObject ? "{" : "[";
         String itemKeyLeftSpace = getHierarchyStr(hierarchy);
-        String itemKeyLeft = itemKeyLeftSpace + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"" + ":");
-        String itemKey = itemKeyLeft + quotation;
+        String itemKeyLeft = itemKeyLeftSpace + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"");
+        String itemKey = itemKeyLeft + (TextUtils.isEmpty(key) ? "" : ":") + quotation;
         JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy, true);
         jsonItemBean.isObjectOrArray = isJsonObject;
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
         keyBuilder.append(itemKey);
         if (keyBuilder.length() > 0) {
-            keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, keyBuilder.length() - 1, Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            if (itemKeyLeft.length() > 0) {
+                keyBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, itemKeyLeft.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                keyBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), itemKeyLeft.length(), keyBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else {
+                keyBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), 0, keyBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
         }
         jsonItemBean.key = keyBuilder;
         if (hierarchy == 0) {
             jsonItemBean.collapseText = keyBuilder;
         } else {
-            jsonItemBean.collapseText = new SpannableStringBuilder(itemKeyLeft + (isJsonObject ? "Object{...}" : "Array[" + arraySize + "]"));
+            SpannableStringBuilder collapseTextBuilder = new SpannableStringBuilder(itemKeyLeft + (TextUtils.isEmpty(key) ? "" : ":") + (isJsonObject ? "Object{...}" : "Array[" + arraySize + "]"));
+            if (collapseTextBuilder.length() > 0) {
+                if (itemKeyLeft.length() > 0) {
+                    collapseTextBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, itemKeyLeft.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                    collapseTextBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), itemKeyLeft.length(), collapseTextBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                } else {
+                    collapseTextBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), 0, collapseTextBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+                }
+            }
+            jsonItemBean.collapseText = collapseTextBuilder;
         }
         return jsonItemBean;
 
@@ -104,7 +119,11 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         String quotation = (isJsonObject ? "}" : "]") + (appendComma ? "," : "");
         JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy);
         jsonItemBean.isObjectOrArray = isJsonObject;
-        jsonItemBean.key = new SpannableStringBuilder(getHierarchyStr(hierarchy) + quotation);
+        SpannableStringBuilder keyBuilder = new SpannableStringBuilder(getHierarchyStr(hierarchy) + quotation);
+        if (keyBuilder.length() > 0) {
+            keyBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), 0, keyBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        }
+        jsonItemBean.key = keyBuilder;
     }
 
     private void handleJsonArray(JsonItemBean parentItem, String key, JSONArray value, int hierarchy, boolean appendComma) {
