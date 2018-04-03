@@ -457,17 +457,13 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     public void collapseAllJsonItems() {
         for (JsonItemBean jsonItemBean : jsonItemBeans) {
             if (jsonItemBean.hierarchy == 0 || (jsonItemBean.hierarchy == 1 && jsonItemBean.isNode)) {
-                //保持第一层和第二层的Node的显示
-                if (jsonItemBean.hierarchy == 0) {
-                    jsonItemBean.isFolded = false;
-                }
                 jsonItemBean.collapse = false;
                 viewJsonItemBeans.add(jsonItemBean);
             } else {
                 //reset state.
                 jsonItemBean.collapse = true;
             }
-            if (jsonItemBean.isNode) {
+            if (jsonItemBean.isNode && jsonItemBean.hierarchy > 0) {
                 jsonItemBean.isFolded = true;
             }
         }
