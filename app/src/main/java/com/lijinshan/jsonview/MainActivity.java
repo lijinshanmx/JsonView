@@ -746,7 +746,13 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         jsonAdapter.setJsonModifyCallback(new JsonAdapter.JsonModifyCallback() {
             @Override
             public void modify(JsonItemBean jsonItemBean) {
-                jsonAdapter.setJsonItemViewValue(jsonItemBean, "iam modified");
+//                if (jsonItemBean.canModify()) {
+//                jsonAdapter.setJsonItemViewValue(jsonItemBean, "iam modified");
+//                }
+                if (jsonItemBean.canDelete()) {
+                    jsonAdapter.deleteJsonItem(jsonItemBean);
+                    jsonAdapter.notifyDataSetChanged();
+                }
             }
         });
 

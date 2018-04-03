@@ -16,16 +16,18 @@ public class JsonItemBean {
     public int hierarchy;
     public boolean collapse = true;
     public boolean isFolded = true;
-    public boolean isObjectOrArray;
-    public SpannableStringBuilder collapseText;
+    public SpannableStringBuilder collapsedNodeText;
     public boolean hasComma;
+    public boolean isObjectOrArray;
+    public boolean isRightBoundary;
+    public boolean deleteFlag;
 
-    public JsonItemBean() {
+    public boolean canModify() {
+        return (!isNode && !isRightBoundary);
     }
 
-    public JsonItemBean(JsonItemBean parent, int hierarchy) {
-        this.parent = parent;
-        this.hierarchy = hierarchy;
+    public boolean canDelete() {
+        return !isRightBoundary;
     }
 
     public JsonItemBean(boolean isNode, JsonItemBean parent, int hierarchy) {

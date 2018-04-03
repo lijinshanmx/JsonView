@@ -79,13 +79,15 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         handleJsonArray(null, null, jsonArray, 0, false);
     }
 
-    private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, String key, int hierarchy, boolean isJsonObject, int arraySize, boolean appendComma) {
+    private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, Object jsonValue, String key, int hierarchy, boolean isJsonObject, int arraySize, boolean appendComma) {
         String quotation = isJsonObject ? "{" : "[";
         String itemKeyLeftSpace = getHierarchyStr(hierarchy);
         String itemKeyLeft = itemKeyLeftSpace + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"");
         String itemKey = itemKeyLeft + (TextUtils.isEmpty(key) ? "" : ":") + quotation;
         JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy, true);
         jsonItemBean.isObjectOrArray = isJsonObject;
+        jsonItemBean.jsonValue = jsonValue;
+        jsonItemBean.jsonIndex = key;
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
         keyBuilder.append(itemKey);
         if (keyBuilder.length() > 0) {
@@ -98,7 +100,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         }
         jsonItemBean.key = keyBuilder;
         if (hierarchy == 0) {
-            jsonItemBean.collapseText = keyBuilder;
+            jsonItemBean.collapsedNodeText = keyBuilder;
         } else {
             SpannableStringBuilder collapseTextBuilder = new SpannableStringBuilder(itemKeyLeft + (TextUtils.isEmpty(key) ? "" : ":") + (isJsonObject ? "Object{...}" : "Array[" + arraySize + "]") + (appendComma ? "," : ""));
             if (collapseTextBuilder.length() > 0) {
@@ -109,7 +111,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
                     collapseTextBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), 0, collapseTextBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 }
             }
-            jsonItemBean.collapseText = collapseTextBuilder;
+            jsonItemBean.collapsedNodeText = collapseTextBuilder;
         }
         return jsonItemBean;
 
@@ -124,11 +126,12 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
             keyBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), 0, keyBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
         }
         jsonItemBean.key = keyBuilder;
+        jsonItemBean.isRightBoundary = true;
     }
 
     private void handleJsonArray(JsonItemBean parentItem, String key, JSONArray value, int hierarchy, boolean appendComma) {
         if (value == null) return;
-        JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, false, value.length(), appendComma);
+        JsonItemBean parent = createItemViewLeftQuotation(parentItem, value, key, hierarchy, false, value.length(), appendComma);
         for (int i = 0; i < value.length(); i++) {
             Object valueObject = value.opt(i);
             handleValue(parent, value, i, hierarchy, null, valueObject, i < value.length() - 1);
@@ -138,7 +141,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
 
     private void handleJsonObject(JsonItemBean parentItem, String key, JSONObject value, int hierarchy, boolean appendComma) {
         if (value == null) return;
-        JsonItemBean parent = createItemViewLeftQuotation(parentItem, key, hierarchy, true, 0, appendComma);
+        JsonItemBean parent = createItemViewLeftQuotation(parentItem, value, key, hierarchy, true, 0, appendComma);
         if (value.names() != null) {
             for (int i = 0; i < value.names().length(); i++) {
                 String keyValue = value.names().optString(i);
@@ -237,7 +240,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         holder.tvRight.setOnClickListener(null);
         if (jsonItemBean.key != null) {
             if (jsonItemBean.isNode && jsonItemBean.isFolded) {
-                holder.tvLeft.setText(jsonItemBean.collapseText);
+                holder.tvLeft.setText(jsonItemBean.collapsedNodeText);
             } else {
                 holder.tvLeft.setText(jsonItemBean.key);
             }
@@ -257,67 +260,138 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         View.OnLongClickListener onLongClickListener = new View.OnLongClickListener() {
             @Override
             public boolean onLongClick(View v) {
-                if (!jsonItemBean.isNode) {
-                    if (jsonItemBean.jsonValue instanceof JSONObject) {
-                        System.out.println(((JSONObject) jsonItemBean.jsonValue).opt((String) jsonItemBean.jsonIndex));
-                    } else if (jsonItemBean.jsonValue instanceof JSONArray) {
-                        System.out.println(((JSONArray) jsonItemBean.jsonValue).opt((int) jsonItemBean.jsonIndex));
-                    }
-                    if (jsonModifyCallback != null) {
-                        jsonModifyCallback.modify(jsonItemBean);
-                    }
+                if (jsonModifyCallback != null) {
+                    jsonModifyCallback.modify(jsonItemBean);
                 }
-
                 return true;
             }
         };
         holder.tvLeft.setOnClickListener(onClickListener);
         holder.tvRight.setOnClickListener(onClickListener);
         holder.itemView.setOnClickListener(onClickListener);
+        holder.tvLeft.setOnLongClickListener(onLongClickListener);
+        holder.tvRight.setOnLongClickListener(onLongClickListener);
+        holder.itemView.setOnLongClickListener(onLongClickListener);
+    }
+
+    public static JSONArray remove(final int idx, final JSONArray from) {
+        final List<JSONObject> objs = asList(from);
+        objs.remove(idx);
+
+        final JSONArray ja = new JSONArray();
+        for (final JSONObject obj : objs) {
+            ja.put(obj);
+        }
+
+        return ja;
+    }
+
+    public static List<JSONObject> asList(final JSONArray ja) {
+        final int len = ja.length();
+        final ArrayList<JSONObject> result = new ArrayList<>(len);
+        for (int i = 0; i < len; i++) {
+            final JSONObject obj = ja.optJSONObject(i);
+            if (obj != null) {
+                result.add(obj);
+            }
+        }
+        return result;
+    }
+
+    //delete
+
+    public void deleteJsonItem(JsonItemBean jsonItemBean) {
+        deleteJsonItems(jsonItemBean);
+        for (int i = jsonItemBeans.size() - 1; i >= 0; i--) {
+            JsonItemBean itemBean = jsonItemBeans.get(i);
+            if (itemBean.deleteFlag) {
+                jsonItemBeans.remove(itemBean);
+            }
+        }
+        notifyDataSetChanged();
+    }
+
+    public void deleteJsonItems(JsonItemBean jsonItemBean) {
+//        肯定要递归删除了
+//        if (jsonItemBean.jsonValue instanceof JSONObject) {
+//            ((JSONObject) jsonItemBean.jsonValue).remove((String) jsonItemBean.jsonIndex);
+//        } else if (jsonItemBean.jsonValue instanceof JSONArray) {
+//            int index = (int) jsonItemBean.jsonIndex;
+//            JSONArray jsonArray = (JSONArray) jsonItemBean.jsonValue;
+//            remove(index, jsonArray);
+//        }
+//        jsonItemBeans.remove(jsonItemBean);
+
         if (!jsonItemBean.isNode) {
-            holder.tvLeft.setOnLongClickListener(onLongClickListener);
-            holder.tvRight.setOnLongClickListener(onLongClickListener);
-            holder.itemView.setOnLongClickListener(onLongClickListener);
+            if (!jsonItemBean.isRightBoundary) {
+                if (jsonItemBean.jsonValue instanceof JSONObject) {
+                    ((JSONObject) jsonItemBean.jsonValue).remove((String) jsonItemBean.jsonIndex);
+                } else {
+                    int index = (int) jsonItemBean.jsonIndex;
+                    JSONArray jsonArray = (JSONArray) jsonItemBean.jsonValue;
+                    remove(index, jsonArray);
+                }
+            }
+            jsonItemBean.deleteFlag = true;
+        } else {
+            Object parentObject = jsonItemBean.parent.jsonValue;
+            if(parentObject instanceof JSONObject) {
+                JSONObject jsonObject = (JSONObject) parentObject;
+                (jsonObject).remove((String) jsonItemBean.jsonIndex);
+            }else {
+                JSONArray jsonArray = (JSONArray) parentObject;
+                int index = (int) jsonItemBean.jsonIndex;
+                remove(index, jsonArray);
+            }
+            jsonItemBean.deleteFlag = true;
+            for (JsonItemBean itemBean : jsonItemBeans) {
+                if (itemBean.parent == jsonItemBean) {
+                    deleteJsonItems(itemBean);
+                }
+            }
         }
     }
 
+    //change
     public void setJsonItemViewValue(JsonItemBean jsonItemBean, Object valueObject) {
+        boolean isSyntaxCorrect = true;
         if (jsonItemBean.jsonValue instanceof JSONObject) {
             try {
                 ((JSONObject) jsonItemBean.jsonValue).put((String) jsonItemBean.jsonIndex, valueObject);
             } catch (JSONException e) {
-                e.printStackTrace();
+                isSyntaxCorrect = false;
             }
-            System.out.println(((JSONObject) jsonItemBean.jsonValue).opt((String) jsonItemBean.jsonIndex));
         } else if (jsonItemBean.jsonValue instanceof JSONArray) {
             try {
                 ((JSONArray) jsonItemBean.jsonValue).put((int) jsonItemBean.jsonIndex, valueObject);
             } catch (JSONException e) {
-                e.printStackTrace();
+                isSyntaxCorrect = false;
             }
         }
-        SpannableStringBuilder valueBuilder = new SpannableStringBuilder();
-        if (valueObject instanceof Number) {
-            valueBuilder.append(valueObject.toString());
-            valueBuilder.setSpan(new ForegroundColorSpan(NUMBER_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        } else if (valueObject instanceof Boolean) {
-            valueBuilder.append(valueObject.toString());
-            valueBuilder.setSpan(new ForegroundColorSpan(BOOLEAN_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        } else if (valueObject instanceof String) {
-            valueBuilder.append("\"").append(valueObject.toString()).append("\"");
-            valueBuilder.setSpan(new ForegroundColorSpan(TEXT_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        } else if (valueObject == null) {
-            valueBuilder.append("null");
-            valueBuilder.setSpan(new ForegroundColorSpan(NULL_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
-        } else { //JSONObject$1 内部类[null,etc]
-            valueBuilder.append(valueObject.toString());
-            valueBuilder.setSpan(new ForegroundColorSpan(NULL_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        if (isSyntaxCorrect) {
+            SpannableStringBuilder valueBuilder = new SpannableStringBuilder();
+            if (valueObject instanceof Number) {
+                valueBuilder.append(valueObject.toString());
+                valueBuilder.setSpan(new ForegroundColorSpan(NUMBER_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else if (valueObject instanceof Boolean) {
+                valueBuilder.append(valueObject.toString());
+                valueBuilder.setSpan(new ForegroundColorSpan(BOOLEAN_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else if (valueObject instanceof String) {
+                valueBuilder.append("\"").append(valueObject.toString()).append("\"");
+                valueBuilder.setSpan(new ForegroundColorSpan(TEXT_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else if (valueObject == null) {
+                valueBuilder.append("null");
+                valueBuilder.setSpan(new ForegroundColorSpan(NULL_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            } else { //JSONObject$1 内部类[null,etc]
+                valueBuilder.append(valueObject.toString());
+                valueBuilder.setSpan(new ForegroundColorSpan(NULL_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+            }
+            if (jsonItemBean.hasComma) {
+                valueBuilder.append(",");
+            }
+            jsonItemBean.value = valueBuilder;
+            notifyDataSetChanged();
         }
-        if (jsonItemBean.hasComma) {
-            valueBuilder.append(",");
-        }
-        jsonItemBean.value = valueBuilder;
-        notifyDataSetChanged();
     }
 
     private JsonModifyCallback jsonModifyCallback = null;
