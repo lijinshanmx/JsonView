@@ -1,5 +1,6 @@
 package com.lijinshan.jsonview;
 
+import android.os.Handler;
 import android.support.v7.widget.RecyclerView;
 import android.text.SpannableStringBuilder;
 import android.text.Spanned;
@@ -32,6 +33,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     public static int NULL_COLOR = 0xFFEF5935;
     public static int BOOLEAN_COLOR = 0xFFf78382;
     public static int BRACES_COLOR = 0xFF4A555F;//"{"，"}","[","]",":" Color
+    private Handler handler = new Handler();
 
     private JSONObject rootJSONObject;
     private JSONArray rootJSONArray;
@@ -39,8 +41,6 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
 
     private List<JsonItemBean> jsonItemBeans;
     private List<JsonItemBean> viewJsonItemBeans;
-
-    private boolean allowAllCollapse = false;
 
 
     public JsonAdapter() {
@@ -72,14 +72,14 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     }
 
     private void handleRootJsonObject(JSONObject jsonObject) {
-        handleJsonObject(null, null, jsonObject, 0, false);
+        handleJsonObject(null, null, null, jsonObject, 0, false);
     }
 
     private void handleRootJsonArray(JSONArray jsonArray) {
-        handleJsonArray(null, null, jsonArray, 0, false);
+        handleJsonArray(null, null, null, jsonArray, 0, false);
     }
 
-    private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, Object jsonValue, String key, int hierarchy, boolean isJsonObject, int arraySize, boolean appendComma) {
+    private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, Object jsonValue, Object jsonIndex, String key, int hierarchy, boolean isJsonObject, int arraySize, boolean appendComma) {
         String quotation = isJsonObject ? "{" : "[";
         String itemKeyLeftSpace = getHierarchyStr(hierarchy);
         String itemKeyLeft = itemKeyLeftSpace + (TextUtils.isEmpty(key) ? "" : "\"" + key + "\"");
@@ -87,7 +87,7 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy, true);
         jsonItemBean.isObjectOrArray = isJsonObject;
         jsonItemBean.jsonValue = jsonValue;
-        jsonItemBean.jsonIndex = key;
+        jsonItemBean.jsonIndex = jsonIndex;
         SpannableStringBuilder keyBuilder = new SpannableStringBuilder();
         keyBuilder.append(itemKey);
         if (keyBuilder.length() > 0) {
@@ -129,9 +129,9 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         jsonItemBean.isRightBoundary = true;
     }
 
-    private void handleJsonArray(JsonItemBean parentItem, String key, JSONArray value, int hierarchy, boolean appendComma) {
+    private void handleJsonArray(JsonItemBean parentItem, String key, Object jsonIndex, JSONArray value, int hierarchy, boolean appendComma) {
         if (value == null) return;
-        JsonItemBean parent = createItemViewLeftQuotation(parentItem, value, key, hierarchy, false, value.length(), appendComma);
+        JsonItemBean parent = createItemViewLeftQuotation(parentItem, value, jsonIndex, key, hierarchy, false, value.length(), appendComma);
         for (int i = 0; i < value.length(); i++) {
             Object valueObject = value.opt(i);
             handleValue(parent, value, i, hierarchy, null, valueObject, i < value.length() - 1);
@@ -139,9 +139,9 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         createItemViewRightQuotation(parent, hierarchy, false, appendComma);
     }
 
-    private void handleJsonObject(JsonItemBean parentItem, String key, JSONObject value, int hierarchy, boolean appendComma) {
+    private void handleJsonObject(JsonItemBean parentItem, String key, Object jsonIndex, JSONObject value, int hierarchy, boolean appendComma) {
         if (value == null) return;
-        JsonItemBean parent = createItemViewLeftQuotation(parentItem, value, key, hierarchy, true, 0, appendComma);
+        JsonItemBean parent = createItemViewLeftQuotation(parentItem, value, jsonIndex, key, hierarchy, true, 0, appendComma);
         if (value.names() != null) {
             for (int i = 0; i < value.names().length(); i++) {
                 String keyValue = value.names().optString(i);
@@ -164,11 +164,11 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         } else if (valueObject instanceof JSONObject) {
             jsonItemBeans.remove(jsonItemBean);
             JSONObject jsonObject = (JSONObject) valueObject;
-            handleJsonObject(parent, keyValue, jsonObject, ++hierarchy, appendComma);
+            handleJsonObject(parent, keyValue, jsonIndex, jsonObject, ++hierarchy, appendComma);
         } else if (valueObject instanceof JSONArray) {
             jsonItemBeans.remove(jsonItemBean);
             JSONArray jsonArray = (JSONArray) valueObject;
-            handleJsonArray(parent, keyValue, jsonArray, ++hierarchy, appendComma);
+            handleJsonArray(parent, keyValue, jsonIndex, jsonArray, ++hierarchy, appendComma);
         } else if (valueObject instanceof String) {
             valueBuilder.append("\"").append(valueObject.toString()).append("\"");
             valueBuilder.setSpan(new ForegroundColorSpan(TEXT_COLOR), 0, valueBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
@@ -298,50 +298,47 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         return result;
     }
 
-    //delete
+    //delete async
+    public void deleteJsonItem(final JsonItemBean jsonItemBean) {
+        new Thread() {
+            @Override
+            public void run() {
+                deleteJsonItems(jsonItemBean);
+                for (int i = jsonItemBeans.size() - 1; i >= 0; i--) {
+                    JsonItemBean itemBean = jsonItemBeans.get(i);
+                    if (itemBean.deleteFlag) {
+                        jsonItemBeans.remove(itemBean);
+                    }
+                }
+                handler.post(new Runnable() {
+                    @Override
+                    public void run() {
+                        notifyDataSetChanged();
+                    }
+                });
 
-    public void deleteJsonItem(JsonItemBean jsonItemBean) {
-        deleteJsonItems(jsonItemBean);
-        for (int i = jsonItemBeans.size() - 1; i >= 0; i--) {
-            JsonItemBean itemBean = jsonItemBeans.get(i);
-            if (itemBean.deleteFlag) {
-                jsonItemBeans.remove(itemBean);
             }
-        }
-        notifyDataSetChanged();
+        }.start();
+
     }
 
-    public void deleteJsonItems(JsonItemBean jsonItemBean) {
-//        肯定要递归删除了
-//        if (jsonItemBean.jsonValue instanceof JSONObject) {
-//            ((JSONObject) jsonItemBean.jsonValue).remove((String) jsonItemBean.jsonIndex);
-//        } else if (jsonItemBean.jsonValue instanceof JSONArray) {
-//            int index = (int) jsonItemBean.jsonIndex;
-//            JSONArray jsonArray = (JSONArray) jsonItemBean.jsonValue;
-//            remove(index, jsonArray);
-//        }
-//        jsonItemBeans.remove(jsonItemBean);
-
+    private void deleteJsonItems(JsonItemBean jsonItemBean) {
         if (!jsonItemBean.isNode) {
             if (!jsonItemBean.isRightBoundary) {
                 if (jsonItemBean.jsonValue instanceof JSONObject) {
                     ((JSONObject) jsonItemBean.jsonValue).remove((String) jsonItemBean.jsonIndex);
                 } else {
-                    int index = (int) jsonItemBean.jsonIndex;
-                    JSONArray jsonArray = (JSONArray) jsonItemBean.jsonValue;
-                    remove(index, jsonArray);
+                    remove((int) jsonItemBean.jsonIndex, (JSONArray) jsonItemBean.jsonValue);
                 }
             }
             jsonItemBean.deleteFlag = true;
         } else {
             Object parentObject = jsonItemBean.parent.jsonValue;
-            if(parentObject instanceof JSONObject) {
+            if (parentObject instanceof JSONObject) {
                 JSONObject jsonObject = (JSONObject) parentObject;
                 (jsonObject).remove((String) jsonItemBean.jsonIndex);
-            }else {
-                JSONArray jsonArray = (JSONArray) parentObject;
-                int index = (int) jsonItemBean.jsonIndex;
-                remove(index, jsonArray);
+            } else {
+                remove((int) jsonItemBean.jsonIndex, (JSONArray) parentObject);
             }
             jsonItemBean.deleteFlag = true;
             for (JsonItemBean itemBean : jsonItemBeans) {

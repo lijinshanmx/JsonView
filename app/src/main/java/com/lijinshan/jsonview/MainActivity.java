@@ -751,7 +751,6 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                }
                 if (jsonItemBean.canDelete()) {
                     jsonAdapter.deleteJsonItem(jsonItemBean);
-                    jsonAdapter.notifyDataSetChanged();
                 }
             }
         });
