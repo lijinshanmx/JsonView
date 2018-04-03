@@ -747,7 +747,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
             @Override
             public void modify(JsonItemBean jsonItemBean) {
 //                if (jsonItemBean.canModify()) {
-//                jsonAdapter.setJsonItemViewValue(jsonItemBean, "iam modified");
+//                    jsonAdapter.changeJsonItem(jsonItemBean, "iam modified");
 //                }
                 if (jsonItemBean.canDelete()) {
                     jsonAdapter.deleteJsonItem(jsonItemBean);
