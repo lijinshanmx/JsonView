@@ -109,10 +109,11 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
                 spannableStringBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), jsonItemBean.key.length(), spannableStringBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
         } else {
-            spannableStringBuilder.append(jsonItemBean.key + (jsonItemBean.hasComma ? "," : ""));
             if (jsonItemBean.isRightBoundary) {
+                spannableStringBuilder.append(jsonItemBean.key + (jsonItemBean.hasComma ? "," : ""));
                 spannableStringBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), 0, spannableStringBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             } else {
+                spannableStringBuilder.append(jsonItemBean.key + ":");
                 spannableStringBuilder.setSpan(new ForegroundColorSpan(KEY_COLOR), 0, jsonItemBean.key.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
                 spannableStringBuilder.setSpan(new ForegroundColorSpan(BRACES_COLOR), jsonItemBean.key.length(), spannableStringBuilder.length(), Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
             }
@@ -121,10 +122,10 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     }
 
     private void createItemViewRightQuotation(JsonItemBean parent, int hierarchy, boolean isJsonObject, boolean appendComma) {
-        String quotation = (isJsonObject ? "}" : "]") + (appendComma ? "," : "");
         JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy);
         jsonItemBean.isObjectOrArray = isJsonObject;
-        jsonItemBean.key = getHierarchyStr(hierarchy) + quotation;
+        jsonItemBean.key = getHierarchyStr(hierarchy) + (isJsonObject ? "}" : "]");
+        jsonItemBean.hasComma = appendComma;
         jsonItemBean.isRightBoundary = true;
     }
 
@@ -273,16 +274,10 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
             @Override
             public void run() {
                 deleteJsonItems(jsonItemBean);
+                removeViewJsonItemComma(jsonItemBean);
                 for (int i = jsonItemBeans.size() - 1; i >= 0; i--) {
                     JsonItemBean itemBean = jsonItemBeans.get(i);
                     if (itemBean.deleteFlag) {
-                        int leftNodeIndex = i - 1;
-                        if (leftNodeIndex >= 0) {
-                            JsonItemBean leftNode = jsonItemBeans.get(leftNodeIndex);
-                            if (leftNode != null && !leftNode.isNode && !leftNode.deleteFlag && !itemBean.hasComma) {
-                                leftNode.hasComma = false;
-                            }
-                        }
                         jsonItemBeans.remove(itemBean);
                     }
                 }
@@ -296,6 +291,40 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
             }
         }.start();
 
+    }
+
+    private void removeViewJsonItemComma(JsonItemBean jsonItemBean) {
+        //1.删除折叠的","
+        int viewLeftNodeIndex = viewJsonItemBeans.indexOf(jsonItemBean) - 1;
+        if (viewLeftNodeIndex >= 0) {
+            JsonItemBean viewLeftNode = viewJsonItemBeans.get(viewLeftNodeIndex);
+            if (viewLeftNode != null) {
+                if (!viewLeftNode.isNode) {
+                    if (!jsonItemBean.hasComma) {
+                        viewLeftNode.hasComma = false;
+                        if (viewLeftNode.isRightBoundary) {
+                            viewLeftNode.parent.hasComma = false;
+                        }
+                    }
+                } else {
+                    if (viewLeftNode.isFolded) {
+                        if (!jsonItemBean.hasComma) {
+                            viewLeftNode.hasComma = false;
+                        }
+                    }
+                }
+            }
+        }
+        //2.删除折叠的","
+        int leftNodeIndex = jsonItemBeans.indexOf(jsonItemBean) - 1;
+        if (leftNodeIndex >= 0) {
+            JsonItemBean leftNode = jsonItemBeans.get(leftNodeIndex);
+            if (leftNode != null) {
+                if (!jsonItemBean.hasComma) {
+                    leftNode.hasComma = false;
+                }
+            }
+        }
     }
 
     //change async
@@ -327,17 +356,19 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
             }
             jsonItemBean.deleteFlag = true;
         } else {
-            Object parentObject = jsonItemBean.parent.parentJsonObject;
-            if (parentObject instanceof JSONObject) {
-                JSONObject jsonObject = (JSONObject) parentObject;
-                (jsonObject).remove((String) jsonItemBean.curJsonItemKey);
-            } else {
-                remove((int) jsonItemBean.curJsonItemKey, (JSONArray) parentObject);
-            }
-            jsonItemBean.deleteFlag = true;
-            for (JsonItemBean itemBean : jsonItemBeans) {
-                if (itemBean.parent == jsonItemBean) {
-                    deleteJsonItems(itemBean);
+            if (jsonItemBean.parent != null) {
+                Object parentObject = jsonItemBean.parent.parentJsonObject;
+                if (parentObject instanceof JSONObject) {
+                    JSONObject jsonObject = (JSONObject) parentObject;
+                    (jsonObject).remove((String) jsonItemBean.curJsonItemKey);
+                } else {
+                    remove((int) jsonItemBean.curJsonItemKey, (JSONArray) parentObject);
+                }
+                jsonItemBean.deleteFlag = true;
+                for (JsonItemBean itemBean : jsonItemBeans) {
+                    if (itemBean.parent == jsonItemBean) {
+                        deleteJsonItems(itemBean);
+                    }
                 }
             }
         }
