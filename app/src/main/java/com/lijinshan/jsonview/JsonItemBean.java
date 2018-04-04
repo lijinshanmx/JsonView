@@ -11,6 +11,7 @@ public class JsonItemBean {
     public Object curJsonItemKey;
     public boolean isNode;
     public JsonItemBean parent;
+    public JsonItemBean rightBoundaryItem;
     public int hierarchy;
     public boolean collapse = true;
     public boolean isFolded = true;
@@ -19,6 +20,7 @@ public class JsonItemBean {
     public boolean hasComma;
     public boolean isObjectOrArray;
     public boolean isRightBoundary;
+    public boolean isLeftBoundary;
     public boolean deleteFlag;
 
     public boolean canModify() {
