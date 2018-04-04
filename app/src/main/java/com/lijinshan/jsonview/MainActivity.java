@@ -8,6 +8,9 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.Button;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private RecyclerView rvJson;
@@ -751,7 +754,11 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
 //                if (jsonItemBean.canDelete()) {
 //                    jsonAdapter.deleteJsonItem(jsonItemBean);
 //                }
-                jsonAdapter.appendJsonValue(jsonItemBean, "age", 26);
+                try {
+                    jsonAdapter.appendJsonObject(jsonItemBean, "node", new JSONObject("{\"name\":\"lijinshan\"}"));
+                } catch (JSONException e) {
+                    e.printStackTrace();
+                }
             }
         });
 
