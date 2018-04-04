@@ -37,4 +37,22 @@ public class JsonItemBean {
         this.hierarchy = hierarchy;
     }
 
+    @Override
+    public String toString() {
+        return "JsonItemBean{" +
+                "key='" + key + '\'' +
+                ", value=" + value +
+                ", isNode=" + isNode +
+                ", hierarchy=" + hierarchy +
+                ", collapse=" + collapse +
+                ", isFolded=" + isFolded +
+                ", collapsedNodeText='" + collapsedNodeText + '\'' +
+                ", collapsedNodeKeyIndex=" + collapsedNodeKeyIndex +
+                ", hasComma=" + hasComma +
+                ", isObjectOrArray=" + isObjectOrArray +
+                ", isRightBoundary=" + isRightBoundary +
+                ", isLeftBoundary=" + isLeftBoundary +
+                ", deleteFlag=" + deleteFlag +
+                '}';
+    }
 }

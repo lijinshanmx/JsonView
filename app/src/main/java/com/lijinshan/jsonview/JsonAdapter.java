@@ -96,6 +96,15 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
 
     }
 
+    private JsonItemBean createItemViewRightQuotation(JsonItemBean parent, int hierarchy, boolean isJsonObject, boolean appendComma) {
+        JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy);
+        jsonItemBean.isObjectOrArray = isJsonObject;
+        jsonItemBean.key = getHierarchyStr(hierarchy) + (isJsonObject ? "}" : "]");
+        jsonItemBean.hasComma = appendComma;
+        jsonItemBean.isRightBoundary = true;
+        return jsonItemBean;
+    }
+
     private SpannableStringBuilder createItemViewRightQuotationSpannableStringBuilder(JsonItemBean jsonItemBean) {
         SpannableStringBuilder spannableStringBuilder = new SpannableStringBuilder();
         if (jsonItemBean.isNode) {
@@ -120,15 +129,6 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
             }
         }
         return spannableStringBuilder;
-    }
-
-    private JsonItemBean createItemViewRightQuotation(JsonItemBean parent, int hierarchy, boolean isJsonObject, boolean appendComma) {
-        JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy);
-        jsonItemBean.isObjectOrArray = isJsonObject;
-        jsonItemBean.key = getHierarchyStr(hierarchy) + (isJsonObject ? "}" : "]");
-        jsonItemBean.hasComma = appendComma;
-        jsonItemBean.isRightBoundary = true;
-        return jsonItemBean;
     }
 
     private void handleJsonArray(JsonItemBean parentItem, String key, Object jsonIndex, JSONArray value, int hierarchy, boolean appendComma) {
@@ -213,13 +213,11 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     @Override
     public void onBindViewHolder(ViewHolder holder, int position) {
         final JsonItemBean jsonItemBean = viewJsonItemBeans.get(position);
-        holder.tvRight.setVisibility(jsonItemBean.value == null ? View.GONE : View.VISIBLE);
+        holder.tvRight.setVisibility(jsonItemBean.value == null && (jsonItemBean.isNode || jsonItemBean.isRightBoundary) ? View.GONE : View.VISIBLE);
         holder.tvLeft.setOnClickListener(null);
         holder.tvRight.setOnClickListener(null);
         holder.tvLeft.setText(createItemViewRightQuotationSpannableStringBuilder(jsonItemBean));
-        if (jsonItemBean.value != null) {
-            holder.tvRight.setText(createValueSpannableStringBuilder(jsonItemBean));
-        }
+        holder.tvRight.setText(createValueSpannableStringBuilder(jsonItemBean));
         View.OnClickListener onClickListener = new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -316,17 +314,6 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
                 }
             }
         }
-
-//        //2.删除折叠的","
-//        int leftNodeIndex = jsonItemBeans.indexOf(jsonItemBean) - 1;
-//        if (leftNodeIndex >= 0) {
-//            JsonItemBean leftNode = jsonItemBeans.get(leftNodeIndex);
-//            if (leftNode != null) {
-//                if (!jsonItemBean.hasComma) {
-//                    leftNode.hasComma = false;
-//                }
-//            }
-//        }
     }
 
     //change async
@@ -429,7 +416,6 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         void modify(JsonItemBean jsonItemBean);
     }
 
-
     private void expandOrCollapseJsonItem(boolean collapse, JsonItemBean jsonItemBean) {
         for (JsonItemBean itemBean : jsonItemBeans) {
             if (!collapse) {
@@ -494,12 +480,6 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         return "";
     }
 
-
-    @Override
-    public int getItemCount() {
-        return calcViewJsonItemBeanSize();
-    }
-
     private int calcViewJsonItemBeanSize() {
         initViewJsonItems();
         changeViewJsonItems();
@@ -516,6 +496,79 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
                 }
             }
         }
+    }
+
+    //string, boolean, string, [not null]
+    public void appendJsonValue(JsonItemBean jsonItemBean, String key, Object value) {
+        if (jsonItemBean.isNode && jsonItemBean.parentJsonObject != null && jsonItemBean.parentJsonObject instanceof JSONObject && value != null) {
+            JsonItemBean appJsonItemBean = new JsonItemBean(false, jsonItemBean, jsonItemBean.hierarchy);
+            appJsonItemBean.key = getHierarchyStr(appJsonItemBean.hierarchy + 1) + "\"" + key + "\"";
+            appJsonItemBean.value = value;
+            appJsonItemBean.curJsonItemKey = key;
+            appJsonItemBean.isFolded = false;
+            appJsonItemBean.parentJsonObject = jsonItemBean.parentJsonObject;
+            try {
+                ((JSONObject) appJsonItemBean.parentJsonObject).putOpt(key, value);
+            } catch (JSONException e) {
+                System.out.println("append error!");
+                return;
+            }
+            List<JsonItemBean> jsonObjectChildRen = findJsonObjectChildren(jsonItemBean);
+            if (checkAppendJsonValueIsIllegal(jsonObjectChildRen, key)) {
+                if (jsonObjectChildRen.size() == 0) {
+                    int index = jsonItemBeans.indexOf(jsonItemBean);
+                    appJsonItemBean.hasComma = false;
+                    jsonItemBeans.add(index + 1, appJsonItemBean);
+                } else {
+                    for (JsonItemBean child : jsonObjectChildRen) {
+                        child.collapse = false;
+                    }
+                    appJsonItemBean.collapse = false;
+                    if (jsonItemBean.isFolded) {
+                        jsonItemBean.isFolded = false;
+                    }
+                    JsonItemBean jsonObjectLastChild = jsonObjectChildRen.get(0);
+                    jsonObjectLastChild.hasComma = true;
+                    appJsonItemBean.hasComma = false;
+                    int index;
+                    if (jsonObjectLastChild.isNode) {
+                        jsonObjectLastChild.rightBoundaryItem.hasComma = true;
+                        index = jsonItemBeans.indexOf(jsonObjectLastChild.rightBoundaryItem);
+                    } else {
+                        index = jsonItemBeans.indexOf(jsonObjectLastChild);
+                    }
+                    jsonItemBeans.add(index + 1, appJsonItemBean);
+                }
+                notifyDataSetChanged();
+            } else {
+                System.out.println("key 重复 =================");
+            }
+        }
+    }
+
+    private boolean checkAppendJsonValueIsIllegal(List<JsonItemBean> jsonObjectChildRen, String key) {
+        for (JsonItemBean jsonItemBean : jsonObjectChildRen) {
+            if (jsonItemBean.curJsonItemKey.equals(key)) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    private List<JsonItemBean> findJsonObjectChildren(JsonItemBean jsonItemBean) {
+        List<JsonItemBean> children = new ArrayList<>();
+        for (int i = jsonItemBeans.size() - 1; i >= 0; i--) {
+            JsonItemBean itemBean = jsonItemBeans.get(i);
+            if (itemBean.parent == jsonItemBean && !itemBean.isRightBoundary) {
+                children.add(itemBean);
+            }
+        }
+        return children;
+    }
+
+    @Override
+    public int getItemCount() {
+        return calcViewJsonItemBeanSize();
     }
 
     //First show 显示第一层和第二层的Node.*/
