@@ -28,7 +28,7 @@ public class JsonItemBean {
     }
 
     public boolean canDelete() {
-        return !isRightBoundary;
+        return !(hierarchy == 0 && isLeftBoundary) && !isRightBoundary;
     }
 
     public JsonItemBean(boolean isNode, JsonItemBean parent, int hierarchy) {
