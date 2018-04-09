@@ -23,6 +23,12 @@ public class JsonItemBean {
     public boolean isLeftBoundary;
     public boolean deleteFlag;
 
+    public JsonItemBean(boolean isNode, JsonItemBean parent, int hierarchy) {
+        this.isNode = isNode;
+        this.parent = parent;
+        this.hierarchy = hierarchy;
+    }
+
     public boolean canModify() {
         return (!isNode && !isRightBoundary);
     }
@@ -31,28 +37,4 @@ public class JsonItemBean {
         return !(hierarchy == 0 && isLeftBoundary) && !isRightBoundary;
     }
 
-    public JsonItemBean(boolean isNode, JsonItemBean parent, int hierarchy) {
-        this.isNode = isNode;
-        this.parent = parent;
-        this.hierarchy = hierarchy;
-    }
-
-    @Override
-    public String toString() {
-        return "JsonItemBean{" +
-                "key='" + key + '\'' +
-                ", value=" + value +
-                ", isNode=" + isNode +
-                ", hierarchy=" + hierarchy +
-                ", collapse=" + collapse +
-                ", isFolded=" + isFolded +
-                ", collapsedNodeText='" + collapsedNodeText + '\'' +
-                ", collapsedNodeKeyIndex=" + collapsedNodeKeyIndex +
-                ", hasComma=" + hasComma +
-                ", isObjectOrArray=" + isObjectOrArray +
-                ", isRightBoundary=" + isRightBoundary +
-                ", isLeftBoundary=" + isLeftBoundary +
-                ", deleteFlag=" + deleteFlag +
-                '}';
-    }
 }

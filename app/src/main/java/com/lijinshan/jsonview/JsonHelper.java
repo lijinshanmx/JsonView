@@ -30,7 +30,6 @@ public class JsonHelper {
         return levelStr.toString();
     }
 
-    //note: json array don't have delete function.
     public static JSONArray remove(final int idx, final JSONArray from) {
         final List<Object> objs = asList(from);
         objs.remove(idx);
