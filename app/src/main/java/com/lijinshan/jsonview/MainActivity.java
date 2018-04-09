@@ -8,9 +8,6 @@ import android.support.v7.widget.RecyclerView;
 import android.view.View;
 import android.widget.Button;
 
-import org.json.JSONException;
-import org.json.JSONObject;
-
 public class MainActivity extends AppCompatActivity implements View.OnClickListener {
 
     private RecyclerView rvJson;
@@ -746,7 +743,7 @@ public class MainActivity extends AppCompatActivity implements View.OnClickListe
         btnShowDialog.setOnClickListener(this);
         bottomSheetDialog = new BottomSheetDialog(this);
         bottomSheetDialog.setContentView(R.layout.bottom_modify_layout);
-        jsonAdapter.setJsonModifyCallback(new JsonAdapter.JsonModifyCallback() {
+        jsonAdapter.setJsonOperationCallback(new JsonAdapter.JsonOperationCallback() {
             @Override
             public void modify(JsonItemBean jsonItemBean) {
 //                if (jsonItemBean.canModify()) {
