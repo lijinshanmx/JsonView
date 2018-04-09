@@ -292,6 +292,8 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
                                 itemBean.curJsonItemKey = itemBeans.size() - 1 - i;
                             }
                         }
+                        int arraySize = ((JSONArray) jsonItemBean.parentJsonObject).length();
+                        jsonItemBean.parent.collapsedNodeText = jsonItemBean.parent.key + ":Array[" + arraySize + "]";
                     }
                 }
                 //更新UI
