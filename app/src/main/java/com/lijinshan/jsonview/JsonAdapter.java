@@ -73,11 +73,11 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     }
 
     private void handleRootJsonObject(JSONObject jsonObject) {
-        handleJsonObject(null, null, null, jsonObject, 0, false);
+        handleJsonObject(null, null, null, null, jsonObject, 0, false);
     }
 
     private void handleRootJsonArray(JSONArray jsonArray) {
-        handleJsonArray(null, null, null, jsonArray, 0, false);
+        handleJsonArray(null, null, null, null, jsonArray, 0, false);
     }
 
     private JsonItemBean createItemViewLeftQuotation(JsonItemBean parent, Object jsonValue, Object jsonIndex, String key, int hierarchy, boolean isJsonObject, int arraySize, boolean appendComma) {
@@ -131,9 +131,9 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         return spannableStringBuilder;
     }
 
-    private void handleJsonArray(JsonItemBean parentItem, String key, Object jsonIndex, JSONArray value, int hierarchy, boolean appendComma) {
+    private void handleJsonArray(JsonItemBean parentItem, String key, Object parentJsonObject, Object jsonIndex, JSONArray value, int hierarchy, boolean appendComma) {
         if (value == null) return;
-        JsonItemBean parent = createItemViewLeftQuotation(parentItem, value, jsonIndex, key, hierarchy, false, value.length(), appendComma);
+        JsonItemBean parent = createItemViewLeftQuotation(parentItem, parentJsonObject, jsonIndex, key, hierarchy, false, value.length(), appendComma);
         for (int i = 0; i < value.length(); i++) {
             Object valueObject = value.opt(i);
             handleValue(parent, value, i, hierarchy, null, valueObject, i < value.length() - 1);
@@ -141,9 +141,9 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         parent.rightBoundaryItem = createItemViewRightQuotation(parent, hierarchy, false, appendComma);
     }
 
-    private void handleJsonObject(JsonItemBean parentItem, String key, Object jsonIndex, JSONObject value, int hierarchy, boolean appendComma) {
+    private void handleJsonObject(JsonItemBean parentItem, String key, Object parentJsonObject, Object jsonIndex, JSONObject value, int hierarchy, boolean appendComma) {
         if (value == null) return;
-        JsonItemBean parent = createItemViewLeftQuotation(parentItem, value, jsonIndex, key, hierarchy, true, 0, appendComma);
+        JsonItemBean parent = createItemViewLeftQuotation(parentItem, parentJsonObject, jsonIndex, key, hierarchy, true, 0, appendComma);
         if (value.names() != null) {
             for (int i = 0; i < value.names().length(); i++) {
                 String keyValue = value.names().optString(i);
@@ -157,10 +157,10 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
     private void handleValue(JsonItemBean parent, Object jsonValue, Object jsonIndex, int hierarchy, String keyValue, Object valueObject, boolean appendComma) {
         if (valueObject instanceof JSONObject) {
             JSONObject jsonObject = (JSONObject) valueObject;
-            handleJsonObject(parent, keyValue, jsonIndex, jsonObject, ++hierarchy, appendComma);
+            handleJsonObject(parent, keyValue, jsonValue, jsonIndex, jsonObject, ++hierarchy, appendComma);
         } else if (valueObject instanceof JSONArray) {
             JSONArray jsonArray = (JSONArray) valueObject;
-            handleJsonArray(parent, keyValue, jsonIndex, jsonArray, ++hierarchy, appendComma);
+            handleJsonArray(parent, keyValue, jsonValue, jsonIndex, jsonArray, ++hierarchy, appendComma);
         } else {
             JsonItemBean jsonItemBean = createJsonItemBean(parent, hierarchy);
             jsonItemBean.hasComma = appendComma;
@@ -271,14 +271,30 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         new Thread() {
             @Override
             public void run() {
-                deleteJsonItems(jsonItemBean);
+                //标记delete
+                deleteJsonItems(jsonItemBean, true);
+                //删除多余的逗号
                 removeViewJsonItemComma(jsonItemBean);
+                //删除标记
                 for (int i = jsonItemBeans.size() - 1; i >= 0; i--) {
                     JsonItemBean itemBean = jsonItemBeans.get(i);
                     if (itemBean.deleteFlag) {
                         jsonItemBeans.remove(itemBean);
                     }
                 }
+                //更新Array索引
+                if (jsonItemBean.parent != null) {
+                    if (jsonItemBean.parent.isNode && !jsonItemBean.parent.isObjectOrArray) {
+                        List<JsonItemBean> itemBeans = findJsonObjectChildren(jsonItemBean.parent);
+                        for (int i = itemBeans.size() - 1; i >= 0; i--) {
+                            JsonItemBean itemBean = itemBeans.get(i);
+                            if (itemBean != null) {
+                                itemBean.curJsonItemKey = itemBeans.size() - 1 - i;
+                            }
+                        }
+                    }
+                }
+                //更新UI
                 handler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -334,29 +350,56 @@ public class JsonAdapter extends RecyclerView.Adapter<JsonAdapter.ViewHolder> {
         }.start();
     }
 
-    private void deleteJsonItems(JsonItemBean jsonItemBean) {
+    private void deleteJsonItems(JsonItemBean jsonItemBean, boolean updateJsonData) {
         if (!jsonItemBean.isNode) {
             if (!jsonItemBean.isRightBoundary) {
-                if (jsonItemBean.parentJsonObject instanceof JSONObject) {
-                    ((JSONObject) jsonItemBean.parentJsonObject).remove((String) jsonItemBean.curJsonItemKey);
-                } else {
-                    remove((int) jsonItemBean.curJsonItemKey, (JSONArray) jsonItemBean.parentJsonObject);
+                if (updateJsonData) { // 不是node节点才需要更新节点信息
+                    if (jsonItemBean.parentJsonObject instanceof JSONObject) {
+                        ((JSONObject) jsonItemBean.parentJsonObject).remove((String) jsonItemBean.curJsonItemKey);
+                    } else {
+                        //需要parent.parent因为自身是一个子节点
+                        JSONArray jsonArray = remove((int) jsonItemBean.curJsonItemKey, (JSONArray) ((JSONObject) jsonItemBean.parent.parent.parentJsonObject).opt((String) jsonItemBean.parent.curJsonItemKey));
+                        ((JSONObject) jsonItemBean.parent.parent.parentJsonObject).remove((String) jsonItemBean.parent.curJsonItemKey);
+                        try {
+                            ((JSONObject) jsonItemBean.parent.parent.parentJsonObject).putOpt((String) jsonItemBean.parent.curJsonItemKey, jsonArray);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        List<JsonItemBean> itemBeans = findJsonObjectChildren(jsonItemBean.parent);
+                        for (JsonItemBean itemBean : itemBeans) {
+                            itemBean.parentJsonObject = jsonArray;
+                        }
+                    }
                 }
             }
             jsonItemBean.deleteFlag = true;
         } else {
-            if (jsonItemBean.parent != null) {//avoid delete root "{"
-                Object parentObject = jsonItemBean.parent.parentJsonObject;
-                if (parentObject instanceof JSONObject) {
-                    JSONObject jsonObject = (JSONObject) parentObject;
-                    (jsonObject).remove((String) jsonItemBean.curJsonItemKey);
-                } else {
-                    remove((int) jsonItemBean.curJsonItemKey, (JSONArray) parentObject);
+            if (jsonItemBean.parent != null) {
+                Object parentObject = jsonItemBean.parentJsonObject;
+                if (updateJsonData) {
+                    if (parentObject instanceof JSONObject) {
+                        JSONObject jsonObject = (JSONObject) parentObject;
+                        jsonObject.remove((String) jsonItemBean.curJsonItemKey);
+                    } else {
+                        JSONArray jsonArray = remove((int) jsonItemBean.curJsonItemKey, (JSONArray) parentObject);
+                        //不需要parent.parent因为自身就是一个节点
+                        ((JSONObject) jsonItemBean.parent.parentJsonObject).remove((String) jsonItemBean.parent.curJsonItemKey);
+                        try {
+                            ((JSONObject) jsonItemBean.parent.parentJsonObject).putOpt((String) jsonItemBean.parent.curJsonItemKey, jsonArray);
+                        } catch (JSONException e) {
+                            e.printStackTrace();
+                        }
+                        List<JsonItemBean> itemBeans = findJsonObjectChildren(jsonItemBean.parent);
+                        for (JsonItemBean itemBean : itemBeans) {
+                            itemBean.parentJsonObject = jsonArray;
+                        }
+                    }
+
                 }
                 jsonItemBean.deleteFlag = true;
                 for (JsonItemBean itemBean : jsonItemBeans) {
                     if (itemBean.parent == jsonItemBean) {
-                        deleteJsonItems(itemBean);
+                        deleteJsonItems(itemBean, false);
                     }
                 }
             }
