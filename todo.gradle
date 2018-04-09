@@ -1,9 +1,8 @@
-//2.增加添加JsonObject和JsonArray的功能.
 //3.代码重构,命名规范.
 //4.记住展开和关闭，一种是放到Bean,一种是放在list,然后添加hashcode.
 //5.写一个idea插件，可以把文字内容发送到手机上.使用广播机制也行，使用文件共享方式也行.
-//1) 支持添加Boolean, Number, String. JSONObject.put  value not null.
-//2) 添加 jsonObject
 
 //.添加 新增标识符， 比如说高亮这一行 用Git的新增色、、
 //.支持idea广播直接修改json全部数据，用于第一次初始化数据！！
+
+//基本完成json数据的增删改功能！
