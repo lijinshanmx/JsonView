@@ -1,7 +1,7 @@
 {
   "update": "Yes",
-  "new_version": "1.0.2",
-  "apk_file_url": "https://uploader.shimo.im/f/zlc7Oxf6h0g3MVie.zip",
+  "new_version": "1.0.3",
+  "apk_file_url": "https://uploader.shimo.im/f/gwSWlpuwNSYYx1OZ.zip",
   "update_log": "1，更新flutter bundle。",
   "target_size": "5.5M",
   "constraint": false
